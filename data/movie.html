@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Recommender</title>
+    <!-- 1. Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. Load Inter font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- 3. Custom Styles -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* bg-gray-900 */
+            color: #f3f4f6; /* text-gray-100 */
+        }
+        
+        /* Style for the active filter button */
+        .genre-btn.active {
+            background-color: #3b82f6; /* bg-blue-600 */
+            color: #ffffff; /* text-white */
+            font-weight: 600;
+        }
+        
+        /* Basic scrollbar styling for a more modern look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937; /* bg-gray-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563; /* bg-gray-600 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280; /* bg-gray-500 */
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto max-w-7xl px-4 py-8 md:py-12">
+        
+        <!-- Header -->
+        <header class="text-center mb-8 md:mb-12">
+            <h1 class="text-3xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
+                Find Your Next Favorite Movie
+            </h1>
+            <p class="text-lg md:text-xl text-gray-400 mt-2">
+                Select a genre to get recommendations.
+            </p>
+        </header>
+
+        <!-- Genre Filters -->
+        <nav class="flex flex-wrap justify-center gap-2 md:gap-4 mb-8 md:mb-12" id="genre-filters">
+            <!-- Genre buttons will be injected here by JavaScript -->
+        </nav>
+
+        <!-- Movie Recommendations Grid -->
+        <main>
+            <h2 class="text-2xl md:text-3xl font-semibold mb-6" id="recommendation-title">All Movies</h2>
+            <div id="movie-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 md:gap-8">
+                <!-- Movie cards will be injected here by JavaScript -->
+            </div>
+            
+            <!-- Message for no results -->
+            <div id="no-results" class="hidden text-center text-gray-400 text-xl py-16">
+                <p>No movies found for this genre. Try another one!</p>
+            </div>
+        </main>
+        
+        <!-- Footer -->
+        <footer class="text-center text-gray-500 mt-12 md:mt-16">
+            <p>Built for you, by Gemini.</p>
+        </footer>
+
+    </div>
+
+    <!-- 4. Application JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // --- DATABASE ---
+            // A simple mock database of movies
+            const movieDatabase = [
+                {
+                    id: 1,
+                    title: 'Inception',
+                    description: 'A thief who steals corporate secrets through use of dream-sharing technology is given the inverse task of planting an idea into the mind of a C.E.O.',
+                    genres: ['Sci-Fi', 'Action', 'Thriller'],
+                    rating: 8.8,
+                    year: 2010,
+                    imageUrl: 'https://placehold.co/600x900/1a2b3c/ffffff?text=Inception'
+                },
+                {
+                    id: 2,
+                    title: 'The Matrix',
+                    description: 'A computer hacker learns from mysterious rebels about the true nature of his reality and his role in the war against its controllers.',
+                    genres: ['Sci-Fi', 'Action'],
+                    rating: 8.7,
+                    year: 1999,
+                    imageUrl: 'https://placehold.co/600x900/1a2b3c/ffffff?text=The+Matrix'
+                },
+                {
+                    id: 3,
+                    title: 'Interstellar',
+                    description: 'A team of explorers travel through a wormhole in space in an attempt to ensure humanity\'s survival.',
+                    genres: ['Sci-Fi', 'Drama', 'Adventure'],
+                    rating: 8.6,
+                    year: 2014,
+                    imageUrl: 'https://placehold.co/600x900/1a2b3c/ffffff?text=Interstellar'
+                },
+                {
+                    id: 4,
+                    title: 'Parasite',
+                    description: 'Greed and class discrimination threaten the newly formed symbiotic relationship between the wealthy Park family and the destitute Kim clan.',
+                    genres: ['Thriller', 'Drama', 'Comedy'],
+                    rating: 8.6,
+                    year: 2019,
+                    imageUrl: 'https://placehold.co/600x900/1a2b3c/ffffff?text=Parasite'
+                },
+                {
+                    id: 5,
+                    title: 'The Dark Knight',
+                    description: 'When the menace known as the Joker emerges, Batman must accept one of the greatest psychological and physical tests of his ability to fight injustice.',
+                    genres: ['Action', 'Crime', 'Drama'],
+                    rating: 9.0,
+                    year: 2008,
+                    imageUrl: 'https://placehold.co/600x900/1a2b3c/ffffff?text=The+Dark+Knight'
+                },
+                {
+                    id: 6,
+                    title: 'Pulp Fiction',
+                    description: 'The lives of two mob hitmen, a boxer, a gangster and his wife, and a pair of diner bandits intertwine in four tales of violence and redemption.',
+                    genres: ['Crime', 'Drama'],
+                    rating: 8.9,
+                    year: 1994,
+                    imageUrl: 'https://placehold.co/600x900/1a2b3c/ffffff?text=Pulp+Fiction'
+                },
+                {
+                    id: 7,
+                    title: 'Spirited Away',
+                    description: 'During her family\'s move to the suburbs, a 10-year-old girl wanders into a world ruled by gods, witches, and spirits, and where humans are changed into beasts.',
+                    genres: ['Animation', 'Adventure', 'Family'],
+                    rating: 8.6,
+                    year: 2001,
+                    imageUrl: 'https://placehold.co/600x900/1a2b3c/ffffff?text=Spirited+Away'
+                },
+                {
+                    id: 8,
+                    title: 'The Grand Budapest Hotel',
+                    description: 'The adventures of Gustave H, a legendary concierge at a famous European hotel between the wars, and Zero Moustafa, the lobby boy who becomes his most trusted friend.',
+                    genres: ['Comedy', 'Drama', 'Adventure'],
+                    rating: 8.1,
+                    year: 2014,
+                    imageUrl: 'https://placehold.co/600x900/1a2b3c/ffffff?text=Grand+Budapest'
+                },
+                {
+                    id: 9,
+                    title: 'Mad Max: Fury Road',
+                    description: 'In a post-apocalyptic wasteland, a woman rebels against a tyrannical ruler in search for her homeland with the help of a group of female prisoners and a drifter named Max.',
+                    genres: ['Action', 'Adventure', 'Sci-Fi'],
+                    rating: 8.1,
+                    year: 2015,
+                    imageUrl: 'https://placehold.co/600x900/1a2b3c/ffffff?text=Mad+Max'
+                },
+                {
+                    id: 10,
+                    title: 'Amélie',
+                    description: 'Amélie is an innocent and naive girl in Paris with her own sense of justice. She decides to help those around her and, along the way, discovers love.',
+                    genres: ['Comedy', 'Romance'],
+                    rating: 8.3,
+                    year: 2001,
+                    imageUrl: 'https://placehold.co/600x900/1a2b3c/ffffff?text=Amélie'
+                },
+                {
+                    id: 11,
+                    title: 'Blade Runner 2049',
+                    description: 'Young Blade Runner K\'s discovery of a long-buried secret leads him to track down former Blade Runner Rick Deckard, who\'s been missing for 30 years.',
+                    genres: ['Sci-Fi', 'Thriller', 'Mystery'],
+                    rating: 8.0,
+                    year: 2017,
+                    imageUrl: 'https://placehold.co/600x900/1a2b3c/ffffff?text=Blade+Runner+2049'
+                },
+                {
+                    id: 12,
+                    title: 'Coco',
+                    description: 'Aspiring musician Miguel, confronted with his family\'s ancestral ban on music, enters the Land of the Dead to find his great-great-grandfather, a legendary singer.',
+                    genres: ['Animation', 'Adventure', 'Family'],
+                    rating: 8.4,
+                    year: 2017,
+                    imageUrl: 'https://placehold.co/600x900/1a2b3c/ffffff?text=Coco'
+                }
+            ];
+
+            // --- UI ELEMENTS ---
+            const movieGrid = document.getElementById('movie-grid');
+            const genreFiltersContainer = document.getElementById('genre-filters');
+            const recommendationTitle = document.getElementById('recommendation-title');
+            const noResultsMessage = document.getElementById('no-results');
+
+            let allGenres = new Set();
+            movieDatabase.forEach(movie => {
+                movie.genres.forEach(genre => allGenres.add(genre));
+            });
+
+            // --- CORE FUNCTIONS ---
+
+            /**
+             * Renders the filter buttons
+             */
+            function renderFilterButtons() {
+                // 'All' button
+                const allButton = createFilterButton('All');
+                allButton.classList.add('active'); // Active by default
+                genreFiltersContainer.appendChild(allButton);
+                
+                // Genre-specific buttons
+                allGenres.forEach(genre => {
+                    const button = createFilterButton(genre);
+                    genreFiltersContainer.appendChild(button);
+                });
+            }
+
+            /**
+             * Helper to create a single filter button
+             */
+            function createFilterButton(genre) {
+                const button = document.createElement('button');
+                button.textContent = genre;
+                button.dataset.genre = genre;
+                button.className = 'genre-btn px-4 py-2 rounded-full text-sm font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 transition-all duration-200';
+                
+                button.addEventListener('click', () => handleFilterClick(button));
+                return button;
+            }
+
+            /**
+             * Renders a list of movie objects to the DOM
+             */
+            function renderMovies(movies) {
+                movieGrid.innerHTML = ''; // Clear existing movies
+                
+                if (movies.length === 0) {
+                    noResultsMessage.classList.remove('hidden');
+                    movieGrid.classList.add('hidden');
+                } else {
+                    noResultsMessage.classList.add('hidden');
+                    movieGrid.classList.remove('hidden');
+                }
+
+                movies.forEach(movie => {
+                    const movieCard = `
+                        <div class="bg-gray-800 rounded-lg shadow-xl overflow-hidden transform transition-all duration-300 hover:scale-105">
+                            <img src="${movie.imageUrl}" alt="${movie.title}" 
+                                 onerror="this.onerror=null;this.src='https://placehold.co/600x900/374151/ffffff?text=Image+Not+Found';" 
+                                 class="w-full h-64 object-cover">
+                            
+                            <div class="p-5">
+                                <div class="flex justify-between items-start mb-2">
+                                    <h3 class="text-xl font-semibold text-white">${movie.title} (${movie.year})</h3>
+                                    <span class="flex items-center text-lg font-bold text-yellow-400">
+                                        <svg class="w-5 h-5 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                                        ${movie.rating}
+                                    </span>
+                                </div>
+                                
+                                <div class="flex flex-wrap gap-2 mb-3">
+                                    ${movie.genres.map(g => `<span class="text-xs font-medium bg-gray-700 text-blue-300 px-2 py-1 rounded-full">${g}</span>`).join('')}
+                                </div>
+                                
+                                <p class="text-gray-400 text-sm leading-relaxed">
+                                    ${movie.description}
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                    movieGrid.innerHTML += movieCard;
+                });
+            }
+
+            /**
+             * The "Recommender" logic
+             * Sorts movies based on the selected genre.
+             * Prioritizes exact matches, then related genres, then sorts by rating.
+             */
+            function getRecommendations(selectedGenre) {
+                if (selectedGenre === 'All') {
+                    // Sort all movies by rating
+                    return [...movieDatabase].sort((a, b) => b.rating - a.rating);
+                }
+
+                let recommendations = [];
+                let otherMovies = [];
+
+                movieDatabase.forEach(movie => {
+                    if (movie.genres.includes(selectedGenre)) {
+                        // Give a high priority score for an exact match
+                        recommendations.push({ ...movie, priority: 2 });
+                    } else {
+                        otherMovies.push(movie);
+                    }
+                });
+
+                // Sort recommendations by rating (highest first)
+                recommendations.sort((a, b) => b.rating - a.rating);
+
+                // For a simple recommender, we'll just show the exact genre matches
+                // A more complex one might check for *related* genres
+                
+                return recommendations;
+            }
+
+            /**
+             * Handles the click event on a genre filter button
+             */
+            function handleFilterClick(button) {
+                // Update active state
+                document.querySelectorAll('.genre-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                button.classList.add('active');
+
+                // Get recommendations
+                const selectedGenre = button.dataset.genre;
+                const recommendedMovies = getRecommendations(selectedGenre);
+                
+                // Update title
+                if (selectedGenre === 'All') {
+                    recommendationTitle.textContent = 'All Movies (Sorted by Rating)';
+                } else {
+                    recommendationTitle.textContent = `Recommended for: ${selectedGenre}`;
+                }
+
+                // Re-render the movie grid
+                renderMovies(recommendedMovies);
+            }
+
+            // --- INITIALIZATION ---
+            function init() {
+                renderFilterButtons();
+                // Initial render: Show all movies, sorted by rating
+                const allMoviesSorted = getRecommendations('All');
+                renderMovies(allMoviesSorted);
+            }
+
+            init();
+        });
+    </script>
+</body>
+</html>

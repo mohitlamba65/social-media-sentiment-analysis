@@ -1,0 +1,26 @@
+date,product_category,sales_amount,customer_feedback,region
+2024-01-01,Electronics,1200,Great product, fast shipping!,North
+2024-01-02,Clothing,150,The shirt was too small, terrible quality.,South
+2024-01-03,Groceries,75,Fresh vegetables and good prices.,East
+2024-01-04,Electronics,2200,The laptop is powerful but gets hot.,West
+2024-01-05,Books,45,Interesting read.,North
+2024-01-06,Clothing,80,Love the color, fits perfectly.,South
+2024-01-07,Electronics,999,Camera is amazing.,East
+2024-01-08,Groceries,120,Delivery was late.,West
+2024-01-09,Books,130,The plot was boring.,North
+2024-01-10,Clothing,210,Good discount, but the fabric feels cheap.,South
+2024-02-01,Electronics,1150,Works as expected.,East
+2024-02-02,Clothing,130,I hate the color, returning it.,West
+2024-02-03,Groceries,85,Good selection of organic products.,North
+2024-02-04,Electronics,2500,Best purchase of the year! Fantastic laptop.,South
+2024-02-05,Books,60,A classic, must-read.,East
+2024-02-06,Clothing,95,Very comfortable, I will buy another.,West
+2024-02-07,Electronics,850,Phone screen cracked easily.,North
+2024-02-08,Groceries,110,The app is easy to use.,South
+2024-02-09,Books,90,The author is a genius.,East
+2024-02-10,Clothing,300,The jacket is warm and stylish.,West
+2024-03-01,Electronics,1300,Customer service was very helpful.,North
+2024-03-02,Clothing,160,It arrived damaged.,South
+2024-03-03,Groceries,90,Why is everything so expensive?,East
+2024-03-04,Electronics,1800,The processor is fast.,West
+2024-03-05,Books,55,I couldn't put it down.,North
