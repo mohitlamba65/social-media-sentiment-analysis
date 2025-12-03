@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Scrape New Data - Local Data Insight{% endblock %}
+
+{% block header_title %}Scrape New Data (YouTube){% endblock %}
+
+{% block content %}
+<div class="flex flex-col lg:flex-row gap-8">
+
+    <!-- Left Column: Scraper Controls -->
+    <div class="lg:w-1/3 space-y-6">
+        <div class="bg-gray-900 rounded-xl shadow-2xl p-6">
+            <h2 class="text-2xl font-bold text-white">Scraper Controls</h2>
+            <p class="text-gray-400 mt-2 text-sm">Run the YouTube comment scraper. Results will be saved to your <code class="bg-gray-700 px-1 py-0.5 rounded-md">/data/</code> folder.</p>
+        </div>
+        
+        <form id="scrape-form" class="bg-gray-900 rounded-xl shadow-2xl p-6 space-y-4">
+            <div>
+                <label for="url" class="block text-sm font-medium text-gray-300">YouTube Video URL</label>
+                <input type="url" id="url" name="url" class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://www.youtube.com/watch?v=..." required>
+            </div>
+            <div>
+                <label for="filter_keywords" class="block text-sm font-medium text-gray-300">Filter Keywords (comma-separated)</label>
+                <input type="text" id="filter_keywords" name="filter_keywords" class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. subscribe, my channel, spam">
+            </div>
+            <div>
+                <label for="min_length" class="block text-sm font-medium text-gray-300">Minimum Comment Length</label>
+                <input type="number" id="min_length" name="min_length" value="10" class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            
+            <div class="flex space-x-4 pt-2">
+                <button type="submit" id="run-button" class="flex-1 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition duration-150 disabled:opacity-50">
+                    <svg class="h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+                    </svg>
+                    Run Scraper
+                </button>
+                <button type="button" id="stop-button" class="flex-1 flex items-center justify-center bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition duration-150 disabled:opacity-50" disabled>
+                    <svg class="h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 7.5A2.25 2.25 0 0 1 7.5 5.25h9a2.25 2.25 0 0 1 2.25 2.25v9a2.25 2.25 0 0 1-2.25 2.25h-9a2.25 2.25 0 0 1-2.25-2.25v-9Z" />
+                    </svg>
+                    Stop Scraper
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Right Column: Live Terminal -->
+    <div class="lg:w-2/3">
+        <div class="bg-gray-900 rounded-xl shadow-2xl h-full flex flex-col">
+            <div class="p-4 border-b border-gray-700/50">
+                <h2 class="text-xl font-bold text-white">Live Terminal Output</h2>
+                <span id="status-indicator" class="text-sm text-gray-500">Status: Idle</span>
+            </div>
+            <pre id="terminal-output" class="flex-1 p-4 bg-black/50 text-xs text-gray-300 font-mono overflow-y-auto h-96 lg:h-full">Welcome to the scraper terminal. Click "Run Scraper" to begin...
+</pre>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const scrapeForm = document.getElementById('scrape-form');
+    const runButton = document.getElementById('run-button');
+    const stopButton = document.getElementById('stop-button');
+    const terminalOutput = document.getElementById('terminal-output');
+    const statusIndicator = document.getElementById('status-indicator');
+    
+    let pollInterval;
+    let isRunning = false;
+
+    function setRunningState(running) {
+        isRunning = running;
+        runButton.disabled = running;
+        stopButton.disabled = !running;
+        statusIndicator.textContent = running ? 'Status: Running' : 'Status: Idle';
+        if (running) {
+            statusIndicator.classList.add('text-green-400');
+            statusIndicator.classList.remove('text-gray-500');
+        } else {
+            statusIndicator.classList.remove('text-green-400');
+            statusIndicator.classList.add('text-gray-500');
+        }
+    }
+
+    async function pollStatus() {
+        try {
+            const response = await fetch("{{ url_for('scrape_status') }}");
+            if (!response.ok) {
+                throw new Error('Network error');
+            }
+            const data = await response.json();
+            
+            // Update log
+            terminalOutput.textContent = data.log;
+            terminalOutput.scrollTop = terminalOutput.scrollHeight; // Auto-scroll
+            
+            // Update status
+            if (data.status === 'running') {
+                setRunningState(true);
+            } else {
+                setRunningState(false);
+                if (pollInterval) {
+                    clearInterval(pollInterval);
+                    pollInterval = null;
+                }
+                if (data.status === 'finished') {
+                    statusIndicator.textContent = 'Status: Finished';
+                    statusIndicator.classList.remove('text-green-400');
+                    statusIndicator.classList.add('text-blue-400');
+                }
+            }
+            
+        } catch (error) {
+            console.error('Poll error:', error);
+            terminalOutput.textContent += "\n--- Error connecting to server. Stopping poll. ---";
+            setRunningState(false);
+            if (pollInterval) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+            }
+        }
+    }
+
+    scrapeForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (isRunning) return;
+
+        setRunningState(true);
+        terminalOutput.textContent = "Sending run command to server...\n";
+        
+        const formData = new FormData(scrapeForm);
+        const data = Object.fromEntries(formData.entries());
+
+        try {
+            const response = await fetch("{{ url_for('run_scrape') }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.message || 'Failed to start scraper');
+            }
+            
+            terminalOutput.textContent = result.message + "\n";
+            
+            // Start polling for status
+            if (!pollInterval) {
+                pollInterval = setInterval(pollStatus, 1500);
+            }
+
+        } catch (error) {
+            console.error('Scrape start error:', error);
+            terminalOutput.textContent = `--- Error: ${error.message} ---`;
+            setRunningState(false);
+        }
+    });
+
+    stopButton.addEventListener('click', async () => {
+        if (!isRunning) return;
+
+        stopButton.disabled = true;
+        terminalOutput.textContent += "\n--- Sending stop command... ---";
+
+        try {
+            const response = await fetch("{{ url_for('stop_scrape') }}", {
+                method: 'POST'
+            });
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.message || 'Failed to stop scraper');
+            }
+
+            terminalOutput.textContent += `\n--- ${result.message} ---`;
+            
+        } catch (error) {
+             console.error('Scrape stop error:', error);
+            terminalOutput.textContent += `\n--- Error stopping scraper: ${error.message} ---`;
+        } finally {
+            // Poll one last time to get final status
+            await pollStatus();
+            setRunningState(false);
+            if (pollInterval) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+            }
+        }
+    });
+
+    // Initial poll on page load in case scraper is already running
+    pollStatus();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-900">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Load Tailwind CSS from CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Plotly.js from CDN (Updated to a specific, newer version) -->
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+    <!-- Google Font: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Load custom styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    
+    <title>{% block title %}Local Data Insight{% endblock %}</title>
+    
+    <!-- Configure Tailwind -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // This app will be dark mode by default
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        /* Simple scrollbar styling for a modern look */
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; } /* gray-800 */
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; } /* gray-600 */
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; } /* gray-500 */
+    </style>
+</head>
+<body class="h-full text-gray-300">
+    <div class="flex h-full">
+        <!-- Sidebar -->
+        <aside class="flex w-64 flex-col bg-gray-900 border-r border-gray-700/50 p-6 space-y-6">
+            <a href="{{ url_for('index') }}" class="flex items-center space-x-3 px-2">
+                <svg class="h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0 0 20.25 18V6A2.25 2.25 0 0 0 18 3.75H6A2.25 2.25 0 0 0 3.75 6v12A2.25 2.25 0 0 0 6 20.25Z" />
+                </svg>
+                <span class="font-bold text-xl text-white">Data Insight</span>
+            </a>
+
+            <nav class="flex-1 space-y-2">
+                <!-- Navigation items -->
+                <a href="{{ url_for('index') }}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg {% if request.path == url_for('index') %}bg-gray-800 text-white{% else %}text-gray-400 hover:bg-gray-800/60 hover:text-white{% endif %}">
+                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12.75l9-9m0 0l9 9m-9-9v16.5m0-16.5H3.75m9 16.5h9" />
+                    </svg>
+                    <span class="font-medium text-sm">Home / Load Data</span>
+                </a>
+                <a href="{{ url_for('dashboard') }}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg {% if request.path == url_for('dashboard') %}bg-gray-800 text-white{% else %}text-gray-400 hover:bg-gray-800/60 hover:text-white{% endif %}">
+                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
+                    </svg>
+                    <span class="font-medium text-sm">Dashboard</span>
+                </a>
+                <a href="{{ url_for('scrape_page') }}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg {% if request.path == url_for('scrape_page') %}bg-gray-800 text-white{% else %}text-gray-400 hover:bg-gray-800/60 hover:text-white{% endif %}">
+                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                    </svg>
+                    <span class="font-medium text-sm">Scrape New Data</span>
+                </a>
+            </nav>
+
+            <div class="!mt-auto">
+                <a href="{{ url_for('reset_app') }}" class="flex items-center justify-center w-full bg-gray-700/80 hover:bg-gray-700 text-gray-300 hover:text-white px-4 py-2.5 rounded-lg text-sm font-medium transition duration-150">
+                    <svg class="h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                    </svg>
+                    Clear Loaded Data
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col overflow-y-auto bg-gray-800">
+            <!-- Top Header -->
+            <header class="bg-gray-800/80 backdrop-blur-sm sticky top-0 z-10 border-b border-gray-700/50">
+                <div class="container mx-auto px-6 lg:px-10 h-16 flex items-center justify-between">
+                     <h1 class="text-xl font-semibold text-white">
+                        {% block header_title %}Upload Data{% endblock %}
+                     </h1>
+                     {% if request.path == url_for('dashboard') %}
+                     <a href="{{ url_for('reset_app') }}" class="flex items-center justify-center bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition duration-150">
+                        Load New File
+                    </a>
+                     {% endif %}
+                </div>
+            </header>
+            
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                <div class="px-6 lg:px-10 pt-6">
+                {% for category, message in messages %}
+                  {% set bg_color = 'bg-blue-600' %}
+                  {% if category == 'error' %}
+                    {% set bg_color = 'bg-red-600' %}
+                  {% elif category == 'success' %}
+                    {% set bg_color = 'bg-green-600' %}
+                  {% endif %}
+                  <div class="{{ bg_color }} text-white px-4 py-3 rounded-lg relative shadow" role="alert">
+                    <span class="block sm:inline">{{ message }}</span>
+                  </div>
+                {% endfor %}
+                </div>
+              {% endif %}
+            {% endwith %}
+
+            <!-- Page-specific content -->
+            <main class="flex-1 container mx-auto px-6 lg:px-10 py-8">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+</body>
+</html>

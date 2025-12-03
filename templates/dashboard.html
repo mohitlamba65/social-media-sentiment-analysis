@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics Dashboard - {{ summary.get('File Name', 'Data Insight') }}{% endblock %}
+
+{% block header_title %}Social Media Analytics: {{ summary.get('File Name', 'No file loaded') }}{% endblock %}
+
+{% block content %}
+{% if summary and 'Error' not in summary %}
+
+<!-- Market Insights Banner -->
+{% if market_insights %}
+<div class="bg-gradient-to-r from-blue-900 to-purple-900 rounded-xl shadow-2xl p-6 mb-8">
+    <div class="flex items-start justify-between">
+        <div class="flex-1">
+            <h2 class="text-2xl font-bold text-white mb-4">📊 Market Sentiment Analysis</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                    <p class="text-sm text-gray-300">Overall Sentiment</p>
+                    <p class="text-2xl font-bold {% if market_insights.overall_sentiment == 'Very Positive' or market_insights.overall_sentiment == 'Positive' %}text-green-400{% elif market_insights.overall_sentiment == 'Very Negative' or market_insights.overall_sentiment == 'Negative' %}text-red-400{% else %}text-gray-300{% endif %}">
+                        {{ market_insights.overall_sentiment }}
+                    </p>
+                    <p class="text-xs text-gray-400 mt-1">{{ market_insights.confidence|round(0)|int }}% confidence</p>
+                </div>
+                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                    <p class="text-sm text-gray-300">Positive</p>
+                    <p class="text-2xl font-bold text-green-400">{{ market_insights.positive_ratio }}%</p>
+                    <div class="w-full bg-gray-700 rounded-full h-2 mt-2">
+                        <div class="bg-green-500 h-2 rounded-full" style="width: {{ market_insights.positive_ratio }}%"></div>
+                    </div>
+                </div>
+                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                    <p class="text-sm text-gray-300">Negative</p>
+                    <p class="text-2xl font-bold text-red-400">{{ market_insights.negative_ratio }}%</p>
+                    <div class="w-full bg-gray-700 rounded-full h-2 mt-2">
+                        <div class="bg-red-500 h-2 rounded-full" style="width: {{ market_insights.negative_ratio }}%"></div>
+                    </div>
+                </div>
+                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                    <p class="text-sm text-gray-300">Total Mentions</p>
+                    <p class="text-2xl font-bold text-white">{{ market_insights.total_mentions|default(0) }}</p>
+                    <p class="text-xs text-gray-400 mt-1">{{ market_insights.engagement_trend|default('') }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recommendations -->
+    {% if market_insights.recommendations %}
+    <div class="mt-6 bg-white/5 backdrop-blur-sm rounded-lg p-4">
+        <h3 class="text-lg font-semibold text-white mb-3">🎯 Key Recommendations</h3>
+        <div class="space-y-2">
+            {% for rec in market_insights.recommendations %}
+            <p class="text-sm text-gray-200">{{ rec }}</p>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="flex flex-col xl:flex-row-reverse gap-8">
+    
+    <!-- Right Column: AI Assistant -->
+    <div class="w-full xl:w-1/3 xl:max-w-md flex-shrink-0 space-y-6">
+        
+        <!-- AI Insights Panel -->
+        <div class="bg-gradient-to-br from-purple-900 to-blue-900 rounded-xl shadow-2xl p-6">
+            <h2 class="text-xl font-semibold text-white mb-3">🤖 AI Insights</h2>
+            <p class="text-sm text-gray-300 mb-4">Get AI-powered analysis of your data</p>
+            <button id="generate-insights" class="w-full bg-white/20 hover:bg-white/30 text-white px-4 py-3 rounded-lg text-sm font-medium transition duration-150 backdrop-blur-sm">
+                <span class="flex items-center justify-center">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    Generate AI Insights
+                </span>
+            </button>
+            <div id="ai-insights-content" class="mt-4 hidden">
+                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4 max-h-96 overflow-y-auto">
+                    <div id="insights-text" class="text-sm text-gray-200 whitespace-pre-wrap"></div>
+                </div>
+            </div>
+            <div id="insights-loading" class="mt-4 hidden text-center">
+                <svg class="animate-spin h-8 w-8 mx-auto text-white" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p class="text-white mt-2 text-sm">Analyzing...</p>
+            </div>
+        </div>
+        
+        <!-- Chatbot -->
+        <div class="bg-gray-900 rounded-xl shadow-2xl flex flex-col h-[500px]">
+            <div class="p-5 border-b border-gray-700/50">
+                <h2 class="text-xl font-semibold text-white">💬 Chat Assistant</h2>
+                <p class="text-sm text-gray-400 mt-1">Ask questions about your data</p>
+            </div>
+            
+            <div id="chat-messages" class="flex-1 p-5 space-y-4 overflow-y-auto">
+                <div class="flex">
+                    <div class="bg-gray-700 rounded-lg p-3 max-w-xs sm:max-w-sm">
+                        <p class="text-sm">Hello! I'm ready to answer questions about <strong>{{ summary.get('File Name', 'your file') | e }}</strong>. What would you like to know?</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-5 border-t border-gray-700/50">
+                <form id="chat-form" class="flex items-center space-x-3">
+                    <input id="chat-input" type="text" placeholder="Ask about sentiment, trends, insights..." class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500" autocomplete="off">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white p-2.5 rounded-lg transition duration-150">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
+                        </svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Left Column: Analytics -->
+    <div class="flex-1 space-y-8">
+        
+        <!-- Trending Topics -->
+        {% if trending %}
+        <div class="bg-gray-900 rounded-xl shadow-2xl p-6">
+            <h2 class="text-2xl font-bold text-white mb-6">🔥 Trending Topics</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% for topic, data in trending.items() %}
+                <div class="bg-gray-800/60 rounded-lg p-4">
+                    <div class="flex items-start justify-between mb-3">
+                        <h3 class="text-lg font-semibold text-white capitalize">{{ topic }}</h3>
+                        <span class="px-2 py-1 text-xs rounded-full {% if data.dominant_sentiment == 'Positive' %}bg-green-600{% elif data.dominant_sentiment == 'Negative' %}bg-red-600{% else %}bg-gray-600{% endif %} text-white">
+                            {{ data.dominant_sentiment }}
+                        </span>
+                    </div>
+                    <p class="text-sm text-gray-400 mb-2">{{ data.mentions }} mentions</p>
+                    <div class="space-y-1">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-green-400">Positive</span>
+                            <span class="text-gray-300">{{ data.positive_ratio }}%</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-1.5">
+                            <div class="bg-green-500 h-1.5 rounded-full" style="width: {{ data.positive_ratio }}%"></div>
+                        </div>
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-red-400">Negative</span>
+                            <span class="text-gray-300">{{ data.negative_ratio }}%</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-1.5">
+                            <div class="bg-red-500 h-1.5 rounded-full" style="width: {{ data.negative_ratio }}%"></div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Data Summary -->
+        <div class="bg-gray-900 rounded-xl shadow-2xl p-6">
+            <h2 class="text-2xl font-bold text-white mb-6">📈 Data Overview</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                <div class="bg-gradient-to-br from-blue-900/50 to-blue-800/30 p-5 rounded-lg border border-blue-700/30">
+                    <dt class="text-sm font-medium text-blue-300 truncate">Total Records</dt>
+                    <dd class="mt-1 text-3xl font-semibold tracking-tight text-white">{{ summary.get('Total Rows', 'N/A') }}</dd>
+                </div>
+                <div class="bg-gradient-to-br from-purple-900/50 to-purple-800/30 p-5 rounded-lg border border-purple-700/30">
+                    <dt class="text-sm font-medium text-purple-300 truncate">Data Points</dt>
+                    <dd class="mt-1 text-3xl font-semibold tracking-tight text-white">{{ summary.get('Total Columns', 'N/A') }}</dd>
+                </div>
+                <div class="bg-gradient-to-br from-green-900/50 to-green-800/30 p-5 rounded-lg border border-green-700/30">
+                    <dt class="text-sm font-medium text-green-300 truncate">Dataset</dt>
+                    <dd class="mt-1 text-lg font-semibold tracking-tight text-white truncate">{{ summary.get('File Name', 'N/A') | e }}</dd>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visualizations -->
+        <h2 class="text-2xl font-bold text-white">📊 Interactive Visualizations</h2>
+
+        <div class="space-y-8">
+            {% if charts.sentiment_pie %}
+            <div class="bg-gray-900 p-6 rounded-xl shadow-2xl">
+                <div id="sentiment-pie" class="w-full h-96"></div>
+            </div>
+            {% endif %}
+
+            {% if charts.sentiment_trend %}
+            <div class="bg-gray-900 p-6 rounded-xl shadow-2xl">
+                <div id="sentiment-trend" class="w-full h-96"></div>
+            </div>
+            {% endif %}
+
+            {% if charts.top_engagement %}
+            <div class="bg-gray-900 p-6 rounded-xl shadow-2xl">
+                <div id="top-engagement" class="w-full h-96"></div>
+            </div>
+            {% endif %}
+
+            {% if charts.keywords %}
+            <div class="bg-gray-900 p-6 rounded-xl shadow-2xl">
+                <div id="keywords-chart" class="w-full h-96"></div>
+            </div>
+            {% endif %}
+
+            {% if charts.sentiment_histogram %}
+            <div class="bg-gray-900 p-6 rounded-xl shadow-2xl">
+                <div id="sentiment-histogram" class="w-full h-96"></div>
+            </div>
+            {% endif %}
+            
+            {% if not charts %}
+            <div class="bg-gray-900 rounded-xl shadow-2xl p-8 text-center">
+                <h3 class="text-lg font-medium text-gray-200">No Visualizations Available</h3>
+                <p class="text-gray-400 mt-2">The data structure doesn't support automatic visualization.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% else %}
+    <div class="bg-gray-900 rounded-xl shadow-2xl p-8 text-center">
+        <h2 class="text-2xl font-bold text-white">No Data Loaded</h2>
+        <p class="text-gray-400 mt-4">Please load a file to view analytics.</p>
+        <a href="{{ url_for('index') }}" class="mt-6 inline-flex items-center px-6 py-3 text-base font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700">
+            Load Data
+        </a>
+    </div>
+{% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    {% if (summary and 'Error' not in summary) %}
+    
+    const plotlyConfig = { responsive: true };
+
+    // Render Charts
+    {% if charts.sentiment_pie %}
+    try {
+        const pieData = {{ charts.sentiment_pie | safe }};
+        Plotly.newPlot('sentiment-pie', pieData.data, pieData.layout, plotlyConfig);
+    } catch (e) {
+        console.error('Error rendering sentiment pie:', e);
+    }
+    {% endif %}
+
+    {% if charts.sentiment_trend %}
+    try {
+        const trendData = {{ charts.sentiment_trend | safe }};
+        Plotly.newPlot('sentiment-trend', trendData.data, trendData.layout, plotlyConfig);
+    } catch (e) {
+        console.error('Error rendering trend:', e);
+    }
+    {% endif %}
+
+    {% if charts.top_engagement %}
+    try {
+        const engagementData = {{ charts.top_engagement | safe }};
+        Plotly.newPlot('top-engagement', engagementData.data, engagementData.layout, plotlyConfig);
+    } catch (e) {
+        console.error('Error rendering engagement:', e);
+    }
+    {% endif %}
+
+    {% if charts.keywords %}
+    try {
+        const keywordsData = {{ charts.keywords | safe }};
+        Plotly.newPlot('keywords-chart', keywordsData.data, keywordsData.layout, plotlyConfig);
+    } catch (e) {
+        console.error('Error rendering keywords:', e);
+    }
+    {% endif %}
+
+    {% if charts.sentiment_histogram %}
+    try {
+        const histData = {{ charts.sentiment_histogram | safe }};
+        Plotly.newPlot('sentiment-histogram', histData.data, histData.layout, plotlyConfig);
+    } catch (e) {
+        console.error('Error rendering histogram:', e);
+    }
+    {% endif %}
+
+    // AI Insights
+    const generateBtn = document.getElementById('generate-insights');
+    const insightsContent = document.getElementById('ai-insights-content');
+    const insightsText = document.getElementById('insights-text');
+    const insightsLoading = document.getElementById('insights-loading');
+
+    generateBtn.addEventListener('click', async () => {
+        generateBtn.disabled = true;
+        insightsLoading.classList.remove('hidden');
+        insightsContent.classList.add('hidden');
+
+        try {
+            const response = await fetch("{{ url_for('get_insights_api') }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                insightsText.textContent = data.insights;
+                insightsContent.classList.remove('hidden');
+            } else {
+                insightsText.textContent = `Error: ${data.error || 'Failed to generate insights'}`;
+                insightsContent.classList.remove('hidden');
+            }
+        } catch (error) {
+            insightsText.textContent = `Error: ${error.message}`;
+            insightsContent.classList.remove('hidden');
+        } finally {
+            insightsLoading.classList.add('hidden');
+            generateBtn.disabled = false;
+        }
+    });
+
+    // Chatbot
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-input');
+    const chatMessages = document.getElementById('chat-messages');
+
+    function escapeHTML(str) {
+        if (typeof str !== 'string') return '';
+        return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+    }
+
+    function addMessage(message, sender) {
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('flex');
+        
+        let sanitized, contentDiv;
+        
+        if (sender === 'user') {
+            messageDiv.classList.add('justify-end');
+            sanitized = escapeHTML(message).replace(/\n/g, '<br>');
+            contentDiv = `<div class="bg-blue-600 text-white rounded-lg p-3 max-w-xs sm:max-w-sm"><p class="text-sm">${sanitized}</p></div>`;
+        } else {
+            sanitized = escapeHTML(message).replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            contentDiv = `<div class="bg-gray-700 rounded-lg p-3 max-w-xs sm:max-w-sm"><div class="text-sm">${sanitized}</div></div>`;
+        }
+        
+        messageDiv.innerHTML = contentDiv;
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    chatForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const message = chatInput.value.trim();
+        if (!message) return;
+
+        addMessage(message, 'user');
+        chatInput.value = '';
+
+        addMessage('...', 'bot');
+        const typingIndicator = chatMessages.lastChild;
+
+        try {
+            const response = await fetch("{{ url_for('chat_api') }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: message })
+            });
+            
+            const data = await response.json();
+            typingIndicator.remove();
+            
+            if (!response.ok) {
+                throw new Error(data.response || 'Network error');
+            }
+            
+            addMessage(data.response, 'bot');
+
+        } catch (error) {
+            console.error('Chat error:', error);
+            typingIndicator.remove();
+            addMessage(`Error: ${error.message}`, 'bot');
+        }
+    });
+    
+    {% endif %}
+});
+</script>
+{% endblock %}

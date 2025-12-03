@@ -1,0 +1,32 @@
+/* Custom styles */
+
+/* This custom style is useful for <pre> blocks in dark mode */
+pre {
+    background-color: #1f2937; /* bg-gray-800 */
+    color: #d1d5db; /* text-gray-300 */
+    padding: 1rem;
+    border-radius: 0.5rem; /* rounded-lg */
+    overflow-x: auto;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.875rem; /* text-sm */
+    line-height: 1.25rem;
+}
+
+/* Specific style for the live terminal */
+pre#terminal-output {
+    background-color: #111827; /* bg-gray-900 slightly darker */
+    color: #d1d5db; /* text-gray-300 */
+    height: 100%;
+    min-height: 24rem; /* 384px */
+    white-space: pre-wrap; /* Wrap long lines */
+    word-break: break-all;
+}
+
+/* Tailwind typography styles for bot messages */
+.prose {
+    color: inherit;
+}
+.prose strong {
+    color: inherit;
+    font-weight: 600;
+}
