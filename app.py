@@ -88,6 +88,26 @@ def generate_advanced_charts(df):
             charts['sentiment_trend'] = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
         except: pass
 
+    # Sentiment Histogram
+    if 'sentiment_score' in df.columns:
+        fig = px.histogram(df, x='sentiment_score', nbins=20, title="Sentiment Score Distribution",
+                           color_discrete_sequence=['#6366f1'])
+        fig.update_layout(template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)',
+                          xaxis_title="Sentiment Score (-1 to 1)", yaxis_title="Count")
+        charts['sentiment_histogram'] = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
+
+    # Keywords Bar Chart
+    trending_topics = get_trending_topics(df, top_n=10)
+    if trending_topics:
+        keywords = list(trending_topics.keys())
+        counts = [data['mentions'] for data in trending_topics.values()]
+        
+        fig = px.bar(x=keywords, y=counts, title="Top Trending Keywords",
+                     color_discrete_sequence=['#10b981'])
+        fig.update_layout(template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)',
+                          xaxis_title="Keyword", yaxis_title="Mentions")
+        charts['keywords'] = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
+
     return charts
 
 # --- Background Log Reader ---
