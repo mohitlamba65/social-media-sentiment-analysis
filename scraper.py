@@ -9,18 +9,14 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, WebDriverException
-
-# Import Services and Options
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
 
 def get_driver(headless=True):
     """
-    Initializes Chrome driver using webdriver_manager.
-    Works for both Local (Windows/Mac) and Render (Linux).
+    Initializes Chrome driver using Selenium's built-in manager (Selenium 4.10+).
+    This avoids external dependency issues like WinError 193.
     """
-    print("--- Initializing Chrome Driver with webdriver_manager ---", flush=True)
+    print("--- Initializing Chrome Driver (Selenium Manager) ---", flush=True)
     
     chrome_options = Options()
     if headless:
@@ -32,12 +28,10 @@ def get_driver(headless=True):
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--window-size=1920,1080")
     
-    # Try to find Chrome binary automatically or use default
-    # On Render, if a buildpack is used, it should be in PATH.
-    
     try:
-        service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=chrome_options)
+        # Selenium 4.6+ handles driver management automatically!
+        # We do NOT need webdriver_manager anymore.
+        driver = webdriver.Chrome(options=chrome_options)
         return driver
     except Exception as e:
         print(f"!!! Error initializing driver: {e}", flush=True)
