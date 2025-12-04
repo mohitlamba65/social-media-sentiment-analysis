@@ -11,56 +11,37 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, WebDriverException
 
 # Import Services and Options
-from selenium.webdriver.edge.service import Service as EdgeService
-from selenium.webdriver.edge.options import Options as EdgeOptions
-from selenium.webdriver.chrome.service import Service as ChromeService
-from selenium.webdriver.chrome.options import Options as ChromeOptions
-
-# --- CONFIGURATION ---
-MANUAL_EDGE_PATH = os.path.join("drivers", "msedgedriver.exe")
-MANUAL_CHROME_PATH = os.path.join("drivers", "chromedriver.exe")
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.options import Options
 
 def get_driver(headless=True):
     """
-    Initializes driver. Tries Manual Edge -> Manual Chrome -> Auto Edge.
+    Initializes Chrome driver using webdriver_manager.
+    Works for both Local (Windows/Mac) and Render (Linux).
     """
-    # 1. Try Manual Edge
-    if os.path.exists(MANUAL_EDGE_PATH):
-        try:
-            print(f"--- Found local Edge driver... ---", flush=True)
-            opts = EdgeOptions()
-            if headless: opts.add_argument("--headless=new")
-            opts.add_argument("--log-level=3")
-            service = EdgeService(executable_path=MANUAL_EDGE_PATH)
-            return webdriver.Edge(service=service, options=opts)
-        except: pass
-
-    # 2. Try Manual Chrome/Brave
-    if os.path.exists(MANUAL_CHROME_PATH):
-        try:
-            print(f"--- Found local Chrome driver... ---", flush=True)
-            opts = ChromeOptions()
-            # Check for Brave path
-            brave_paths = [
-                "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe",
-                "C:/Program Files (x86)/BraveSoftware/Brave-Browser/Application/brave.exe"
-            ]
-            for bp in brave_paths:
-                if os.path.exists(bp):
-                    opts.binary_location = bp
-                    break
-            
-            if headless: opts.add_argument("--headless=new")
-            opts.add_argument("--log-level=3")
-            service = ChromeService(executable_path=MANUAL_CHROME_PATH)
-            return webdriver.Chrome(service=service, options=opts)
-        except: pass
-
-    # 3. Auto Fallback
-    print("--- Attempting auto-driver (requires internet)... ---", flush=True)
-    opts = EdgeOptions()
-    if headless: opts.add_argument("--headless=new")
-    return webdriver.Edge(options=opts)
+    print("--- Initializing Chrome Driver with webdriver_manager ---", flush=True)
+    
+    chrome_options = Options()
+    if headless:
+        chrome_options.add_argument("--headless=new")
+    
+    # Essential options for Render/Linux environments
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--window-size=1920,1080")
+    
+    # Try to find Chrome binary automatically or use default
+    # On Render, if a buildpack is used, it should be in PATH.
+    
+    try:
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=chrome_options)
+        return driver
+    except Exception as e:
+        print(f"!!! Error initializing driver: {e}", flush=True)
+        raise e
 
 def parse_number(text):
     if not text: return 0

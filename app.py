@@ -208,7 +208,7 @@ def run_scrape():
         return jsonify({'status': 'error', 'message': 'Scraper is already running.'}), 400
 
     data = request.json
-    cmd = ['python', 'scraper.py', data['url'], 
+    cmd = [sys.executable, 'scraper.py', data['url'], 
            '--filter_keywords', data.get('filter_keywords',''), 
            '--min_length', str(data.get('min_length',10))]
 
