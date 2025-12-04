@@ -3,6 +3,9 @@ import os
 import argparse
 import pandas as pd
 import yt_dlp
+import tempfile
+import base64
+import os as _os
 
 def parse_number(text):
     if not text: return 0
@@ -16,7 +19,7 @@ def parse_number(text):
     except: pass
     return 0
 
-def run_scraper(video_url, filter_keywords, min_length):
+def run_scraper(video_url, filter_keywords, min_length, cookies_path="", cookies_from_browser=False):
     print(f"--- Initializing yt-dlp Scraper ---", flush=True)
     print(f"--- Target URL: {video_url} ---", flush=True)
 
@@ -29,6 +32,16 @@ def run_scraper(video_url, filter_keywords, min_length):
         'no_warnings': True,
         # 'playlist_items': '1', # Only one video if it's a playlist
     }
+
+    # If a cookies file path is provided, pass it to yt-dlp.
+    # Alternatively, the user can request yt-dlp to try using browser cookies.
+    if cookies_path:
+        ydl_opts['cookiefile'] = cookies_path
+    elif cookies_from_browser:
+        # Try Chrome browser cookies by default. This requires yt-dlp's
+        # browser-cookie support (e.g., the `browser_cookie3` package available
+        # in many environments). If unsupported, yt-dlp will raise an error.
+        ydl_opts['cookiesfrombrowser'] = 'chrome'
 
     comments_data = []
     video_title = "Unknown Video"
@@ -65,7 +78,13 @@ def run_scraper(video_url, filter_keywords, min_length):
                     })
 
     except Exception as e:
-        print(f"!!! yt-dlp Error: {e}", flush=True)
+        err = str(e)
+        print(f"!!! yt-dlp Error: {err}", flush=True)
+        # If the error looks like YouTube is asking to sign-in, give user guidance
+        if 'Sign in to confirm' in err or 'Sign in to confirm you' in err:
+            print("--- Hint: YouTube is blocking access. Provide cookies with `--cookies PATH`", flush=True)
+            print("or enable `--cookies_from_browser` and ensure the deployment has access to browser cookie extraction.", flush=True)
+            print("See: https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp", flush=True)
         return
 
     if not comments_data:
@@ -103,5 +122,36 @@ if __name__ == "__main__":
     parser.add_argument("url", type=str)
     parser.add_argument("--filter_keywords", type=str, default="")
     parser.add_argument("--min_length", type=int, default=10)
+    parser.add_argument("--cookies", type=str, default="", help="Path to a cookies.txt file exported from your browser")
+    parser.add_argument("--cookies_from_browser", action="store_true", help="Try to extract cookies from the default browser (e.g., Chrome) on the host")
     args = parser.parse_args()
-    run_scraper(args.url, args.filter_keywords, args.min_length)
+    # Environment-variable support for Render/cloud deployments:
+    # - YTDLP_COOKIES_PATH: a path on disk (if you mounted a secret or persistent disk)
+    # - YTDLP_COOKIES_B64: base64-encoded contents of a cookies.txt file (safer to store as a secret env var)
+    env_cookies_path = _os.environ.get('YTDLP_COOKIES_PATH', '')
+    env_cookies_b64 = _os.environ.get('YTDLP_COOKIES_B64', '')
+
+    # If the user provided a base64 cookies blob via env, write it to a temp file
+    temp_cookie_path = ''
+    if env_cookies_b64 and not args.cookies:
+        try:
+            decoded = base64.b64decode(env_cookies_b64)
+            tf = tempfile.NamedTemporaryFile(delete=False, prefix='yt_cookies_', suffix='.txt')
+            tf.write(decoded)
+            tf.close()
+            temp_cookie_path = tf.name
+        except Exception as e:
+            print(f"Failed to decode/write YTDLP_COOKIES_B64: {e}")
+
+    # Priority: CLI `--cookies` > env YTDLP_COOKIES_PATH > env YTDLP_COOKIES_B64-written-file
+    chosen_cookies_path = args.cookies or env_cookies_path or temp_cookie_path
+
+    try:
+        run_scraper(args.url, args.filter_keywords, args.min_length, cookies_path=chosen_cookies_path, cookies_from_browser=args.cookies_from_browser)
+    finally:
+        # cleanup temporary file if created
+        if temp_cookie_path:
+            try:
+                _os.remove(temp_cookie_path)
+            except:
+                pass
