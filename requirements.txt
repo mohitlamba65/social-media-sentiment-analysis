@@ -15,3 +15,4 @@ langchain-community
 langchain-groq
 python-dotenv
 gunicorn
+yt-dlp

@@ -1,76 +1,14 @@
 import sys
-import time
 import os
 import argparse
 import pandas as pd
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, WebDriverException
-from selenium.webdriver.chrome.options import Options
-
-def get_driver(headless=True):
-    """
-    Initializes Chrome driver using Selenium's built-in manager.
-    Includes anti-detection measures and explicit binary path detection for Render.
-    """
-    print("--- Initializing Chrome Driver (Selenium Manager) ---", flush=True)
-    
-    chrome_options = Options()
-    if headless:
-        chrome_options.add_argument("--headless=new")
-    
-    # Essential options for Render/Linux environments
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--window-size=1920,1080")
-    
-    # Explicitly set binary location for Render/Linux
-    chrome_bin = os.environ.get("CHROME_BIN")
-    if chrome_bin:
-        print(f"--- Found CHROME_BIN: {chrome_bin} ---", flush=True)
-        chrome_options.binary_location = chrome_bin
-    else:
-        # Fallback for common Linux paths
-        common_paths = ["/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"]
-        for path in common_paths:
-            if os.path.exists(path):
-                print(f"--- Found Chrome binary at: {path} ---", flush=True)
-                chrome_options.binary_location = path
-                break
-    
-    # --- Anti-Detection Options ---
-    # 1. Disable Automation Flags
-    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
-    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    chrome_options.add_experimental_option('useAutomationExtension', False)
-    
-    # 2. Fake User-Agent (Look like a real Windows PC)
-    chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-    
-    try:
-        driver = webdriver.Chrome(options=chrome_options)
-        
-        # 3. Additional Property Spoofing (via CDP)
-        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-            "source": """
-                Object.defineProperty(navigator, 'webdriver', {
-                    get: () => undefined
-                })
-            """
-        })
-        
-        return driver
-    except Exception as e:
-        print(f"!!! Error initializing driver: {e}", flush=True)
-        raise e
+import yt_dlp
 
 def parse_number(text):
     if not text: return 0
-    text = text.upper().replace('LIKES', '').replace('VIEWS', '').strip()
+    # yt-dlp returns numbers directly, but just in case
+    if isinstance(text, (int, float)): return int(text)
+    text = str(text).upper().replace('LIKES', '').replace('VIEWS', '').strip()
     try:
         if 'K' in text: return int(float(text.replace('K', '')) * 1000)
         elif 'M' in text: return int(float(text.replace('M', '')) * 1000000)
@@ -79,108 +17,62 @@ def parse_number(text):
     return 0
 
 def run_scraper(video_url, filter_keywords, min_length):
-    print(f"--- Initializing WebDriver ---", flush=True)
+    print(f"--- Initializing yt-dlp Scraper ---", flush=True)
+    print(f"--- Target URL: {video_url} ---", flush=True)
+
+    # yt-dlp options to get comments without downloading video
+    ydl_opts = {
+        'skip_download': True,
+        'extract_flat': True, # Don't download video
+        'getcomments': True,  # Fetch comments
+        'quiet': True,        # Less noise
+        'no_warnings': True,
+        # 'playlist_items': '1', # Only one video if it's a playlist
+    }
+
+    comments_data = []
+    video_title = "Unknown Video"
+    video_likes = 0
+
     try:
-        driver = get_driver(headless=True)
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            print("--- Fetching Video Metadata & Comments... (This may take a moment) ---", flush=True)
+            info = ydl.extract_info(video_url, download=False)
+            
+            video_title = info.get('title', 'Unknown Video')
+            video_likes = info.get('like_count', 0)
+            
+            print(f"--- Video Found: {video_title[:50]}... ---", flush=True)
+            print(f"--- Likes: {video_likes} ---", flush=True)
+
+            # Extract comments
+            raw_comments = info.get('comments', [])
+            print(f"--- Found {len(raw_comments)} raw comments. Processing... ---", flush=True)
+
+            if not raw_comments:
+                print("!!! No comments found. Comments might be disabled or not loaded. !!!", flush=True)
+
+            for c in raw_comments:
+                txt = c.get('text', '')
+                auth = c.get('author', 'Anonymous')
+                
+                if txt:
+                    comments_data.append({
+                        "video_title": video_title,
+                        "author": auth,
+                        "comment": txt,
+                        "video_likes": video_likes
+                    })
+
     except Exception as e:
-        print(f"!!! Driver Setup Failed: {e}", flush=True)
+        print(f"!!! yt-dlp Error: {e}", flush=True)
         return
-
-    print(f"--- Opening URL: {video_url} ---", flush=True)
-    
-    try:
-        driver.get(video_url)
-        # Increased wait time for page load
-        time.sleep(5)
-        
-        # Debug: Print Page Title to see if we are blocked
-        print(f"--- Page Title: {driver.title} ---", flush=True)
-
-        # --- PART 1: Robust Metadata (Short-timeout) ---
-        print("--- Checking Metadata (Title/Likes)... ---", flush=True)
-        video_title = "Unknown Video"
-        video_likes = 0
-        
-        try:
-            # Try standard video title
-            title_elem = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "h1.ytd-watch-metadata, h1.ytd-video-primary-info-renderer"))
-            )
-            video_title = title_elem.text.replace('\n', ' ').strip()
-            print(f"--- Title Found: {video_title[:30]}... ---", flush=True)
-        except:
-            print("--- Could not find Title (skipping) ---", flush=True)
-
-        # --- PART 2: Scroll Logic ---
-        print("--- Locating Comments... ---", flush=True)
-        try:
-            # Send PAGE_DOWN to trigger loading
-            body = driver.find_element(By.TAG_NAME, 'body')
-            body.send_keys(Keys.PAGE_DOWN)
-            time.sleep(1)
-            body.send_keys(Keys.PAGE_DOWN)
-            
-            # Wait for comment container
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "#comments, ytd-comments"))
-            )
-            print("--- Comments section found. Scrolling... ---", flush=True)
-        except:
-            print("!!! Warning: Comments section not immediately found. Attempting force scroll... !!!", flush=True)
-
-        # Force Scroll Loop
-        last_height = driver.execute_script("return document.documentElement.scrollHeight")
-        for i in range(30): # Max 30 scrolls
-            driver.execute_script("window.scrollTo(0, document.documentElement.scrollHeight);")
-            time.sleep(1.5) 
-            new_height = driver.execute_script("return document.documentElement.scrollHeight")
-            if new_height == last_height:
-                # Verify if we actually have comments loaded
-                count = len(driver.find_elements(By.CSS_SELECTOR, "#content-text"))
-                if count > 5:
-                    break # We have data, stop scrolling
-            last_height = new_height
-            if i % 5 == 0: print(f"--- Scroll {i}/30... ---", flush=True)
-
-        # --- PART 3: Extraction ---
-        comments_data = []
-        try:
-            # Generic selectors to catch multiple YouTube layouts
-            comment_elems = driver.find_elements(By.CSS_SELECTOR, "#content-text")
-            author_elems = driver.find_elements(By.CSS_SELECTOR, "#author-text")
-            
-            # Safety check
-            num = min(len(comment_elems), len(author_elems))
-            print(f"--- Found {num} raw comments. Processing... ---", flush=True)
-
-            if num == 0:
-                print("!!! No comments found by selectors. YouTube layout might have changed. !!!", flush=True)
-                # Fallback debug
-                print(f"Debug: Page Source Length: {len(driver.page_source)}", flush=True)
-            
-            for i in range(num):
-                try:
-                    txt = comment_elems[i].text
-                    auth = author_elems[i].text
-                    if txt:
-                        comments_data.append({
-                            "video_title": video_title,
-                            "author": auth,
-                            "comment": txt,
-                            "video_likes": video_likes
-                        })
-                except: continue
-        except Exception as e:
-            print(f"!!! Extraction Error: {e}", flush=True)
-
-    finally:
-        driver.quit()
 
     if not comments_data:
         print("!!! No data collected. Exiting. ---", flush=True)
         return
 
-    # --- PART 4: Save ---
+    # --- Save Data ---
     df = pd.DataFrame(comments_data)
     
     # Filter
@@ -194,8 +86,14 @@ def run_scraper(video_url, filter_keywords, min_length):
 
     if len(df) > 0:
         if not os.path.exists('data'): os.makedirs('data')
+        # Safe filename
         safe_title = "".join([c for c in video_title if c.isalnum() or c in (' ','-')])[:20]
-        vid_id = video_url.split('v=')[-1].split('&')[0]
+        # Extract ID safely
+        try:
+            vid_id = info.get('id', 'video')
+        except:
+            vid_id = 'video'
+            
         filename = f"data/YT_{safe_title}_{vid_id}.csv"
         df.to_csv(filename, index=False, encoding='utf-8')
         print(f"--- Saved to: {filename} ---", flush=True)
