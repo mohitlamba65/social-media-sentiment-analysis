@@ -13,8 +13,8 @@ from selenium.webdriver.chrome.options import Options
 
 def get_driver(headless=True):
     """
-    Initializes Chrome driver using Selenium's built-in manager (Selenium 4.10+).
-    This avoids external dependency issues like WinError 193.
+    Initializes Chrome driver using Selenium's built-in manager.
+    Includes anti-detection measures to bypass bot protection.
     """
     print("--- Initializing Chrome Driver (Selenium Manager) ---", flush=True)
     
@@ -28,10 +28,27 @@ def get_driver(headless=True):
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--window-size=1920,1080")
     
+    # --- Anti-Detection Options ---
+    # 1. Disable Automation Flags
+    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    chrome_options.add_experimental_option('useAutomationExtension', False)
+    
+    # 2. Fake User-Agent (Look like a real Windows PC)
+    chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+    
     try:
-        # Selenium 4.6+ handles driver management automatically!
-        # We do NOT need webdriver_manager anymore.
         driver = webdriver.Chrome(options=chrome_options)
+        
+        # 3. Additional Property Spoofing (via CDP)
+        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+            "source": """
+                Object.defineProperty(navigator, 'webdriver', {
+                    get: () => undefined
+                })
+            """
+        })
+        
         return driver
     except Exception as e:
         print(f"!!! Error initializing driver: {e}", flush=True)
@@ -59,10 +76,13 @@ def run_scraper(video_url, filter_keywords, min_length):
     
     try:
         driver.get(video_url)
-        time.sleep(2)
+        # Increased wait time for page load
+        time.sleep(5)
+        
+        # Debug: Print Page Title to see if we are blocked
+        print(f"--- Page Title: {driver.title} ---", flush=True)
 
         # --- PART 1: Robust Metadata (Short-timeout) ---
-        # We use a short wait (5s). If it fails, we MOVE ON to comments.
         print("--- Checking Metadata (Title/Likes)... ---", flush=True)
         video_title = "Unknown Video"
         video_likes = 0
@@ -77,7 +97,7 @@ def run_scraper(video_url, filter_keywords, min_length):
         except:
             print("--- Could not find Title (skipping) ---", flush=True)
 
-        # --- PART 2: Scroll Logic (The "Hang" often happens here) ---
+        # --- PART 2: Scroll Logic ---
         print("--- Locating Comments... ---", flush=True)
         try:
             # Send PAGE_DOWN to trigger loading
