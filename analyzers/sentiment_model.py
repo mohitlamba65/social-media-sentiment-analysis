@@ -55,7 +55,7 @@ def get_sentiment_trends(df):
         
     try:
         # Ensure datetime format
-        df['temp_date'] = pd.to_datetime(df[date_col], errors='coerce')
+        df['temp_date'] = pd.to_datetime(df[date_col], errors='coerce', format='mixed')
         df_clean = df.dropna(subset=['temp_date'])
         
         if df_clean.empty:

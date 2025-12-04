@@ -14,7 +14,7 @@ from selenium.webdriver.chrome.options import Options
 def get_driver(headless=True):
     """
     Initializes Chrome driver using Selenium's built-in manager.
-    Includes anti-detection measures to bypass bot protection.
+    Includes anti-detection measures and explicit binary path detection for Render.
     """
     print("--- Initializing Chrome Driver (Selenium Manager) ---", flush=True)
     
@@ -27,6 +27,20 @@ def get_driver(headless=True):
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--window-size=1920,1080")
+    
+    # Explicitly set binary location for Render/Linux
+    chrome_bin = os.environ.get("CHROME_BIN")
+    if chrome_bin:
+        print(f"--- Found CHROME_BIN: {chrome_bin} ---", flush=True)
+        chrome_options.binary_location = chrome_bin
+    else:
+        # Fallback for common Linux paths
+        common_paths = ["/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"]
+        for path in common_paths:
+            if os.path.exists(path):
+                print(f"--- Found Chrome binary at: {path} ---", flush=True)
+                chrome_options.binary_location = path
+                break
     
     # --- Anti-Detection Options ---
     # 1. Disable Automation Flags
