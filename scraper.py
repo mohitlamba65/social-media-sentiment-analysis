@@ -140,6 +140,7 @@ if __name__ == "__main__":
             tf.write(decoded)
             tf.close()
             temp_cookie_path = tf.name
+            print(f"--- Wrote temporary cookies file from YTDLP_COOKIES_B64: {temp_cookie_path} (will be removed after run) ---", flush=True)
         except Exception as e:
             print(f"Failed to decode/write YTDLP_COOKIES_B64: {e}")
 
@@ -147,6 +148,16 @@ if __name__ == "__main__":
     chosen_cookies_path = args.cookies or env_cookies_path or temp_cookie_path
 
     try:
+        # Inform which cookie source is being used (no secret values printed)
+        if args.cookies:
+            print(f"--- Using cookies from CLI path: {args.cookies} ---", flush=True)
+        elif env_cookies_path:
+            print(f"--- Using cookies from env path: {env_cookies_path} ---", flush=True)
+        elif temp_cookie_path:
+            print(f"--- Using temporary cookies file written from YTDLP_COOKIES_B64 ---", flush=True)
+        elif args.cookies_from_browser:
+            print(f"--- Attempting to use browser cookies on host (cookies_from_browser=True) ---", flush=True)
+
         run_scraper(args.url, args.filter_keywords, args.min_length, cookies_path=chosen_cookies_path, cookies_from_browser=args.cookies_from_browser)
     finally:
         # cleanup temporary file if created
