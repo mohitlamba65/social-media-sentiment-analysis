@@ -139,15 +139,25 @@ def get_trending_topics(df, top_n=10):
     from nltk.corpus import stopwords
     from nltk.tokenize import word_tokenize
     import nltk
+    import os
+    
+    # Add local nltk_data directory to path
+    nltk_data_dir = os.path.join(os.getcwd(), 'nltk_data')
+    if os.path.exists(nltk_data_dir):
+        nltk.data.path.append(nltk_data_dir)
     
     try:
         nltk.data.find('corpora/stopwords')
     except LookupError:
-        nltk.download('stopwords')
+        nltk.download('stopwords', download_dir=nltk_data_dir)
     try:
         nltk.data.find('tokenizers/punkt')
     except LookupError:
-        nltk.download('punkt')
+        nltk.download('punkt', download_dir=nltk_data_dir)
+    try:
+        nltk.data.find('tokenizers/punkt_tab')
+    except LookupError:
+        nltk.download('punkt_tab', download_dir=nltk_data_dir)
     
     stop_words = set(stopwords.words('english'))
     
